@@ -1,12 +1,15 @@
 from dataclasses import dataclass,field
+from locale import normalize
+from matplotlib.cm import ScalarMappable
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point
 import geopandas as gpd
 from geopandas import GeoDataFrame
 import matplotlib.pyplot as plt
-import pickle
+import matplotlib as mpl
 import pyproj
+from os.path import exists
 
 @dataclass()
 class Airport():
@@ -105,7 +108,7 @@ def Map_airports(ax,airports,types,text=False):
         for airport in airports:
             ax.text(airport.lon,airport.lat,airport.name)
 
-    ax.set_title(f"European airports - {len(airports[0].rw_length)} runways > 1800m")
+    ax.set_title(f"European airports - runways > 1800m")
     ax.set_xlim(-1.4e6,3.7e6)
     ax.set_ylim(4.1e6,8.6e6)
     ax.get_xaxis().set_visible(False)
@@ -139,10 +142,12 @@ def Airport_routes(ax,routes_df,airports,source_airport,dist):
 
     routes_df['route_IATA']=routes_df['source_IATA']+"-"+routes_df["dest_IATA"]
     routes_df=routes_df[routes_df['source_IATA']==source_airport.IATA]
-    dest_IATAs=routes_df['dest_IATA'].tolist()
 
-    ####    Plot routes     ####
-    for IATA in dest_IATAs:
+    ####    Filter routes     ####
+
+    routes_filtered=[]
+    for index,row in routes_df.iterrows():
+        IATA=row['dest_IATA']
         airport=Find_airport(airports,IATA)
         if airport==None:
             continue
@@ -151,10 +156,38 @@ def Airport_routes(ax,routes_df,airports,source_airport,dist):
         dest_dist=distance_GPS_points_m(source_lat,dest_lat,source_lon,dest_lon)
 
         if dest_dist/1000<=dist:   
-            ax.plot((source_lon,dest_lon),(source_lat,dest_lat))
-
+            #ax.plot((source_lon,dest_lon),(source_lat,dest_lat))
             ax.text(dest_lon,dest_lat,airport.IATA)
 
+            routes_filtered.append({
+                "route":f"{source_airport.IATA}-{IATA}",
+                "length":int(dest_dist/1000),
+                "plane":row['plane_IATA'].split(" ")[0],
+                "dest_lat_m":dest_lat,
+                "dest_lon_m":dest_lon
+            })
+
+    routes_filtered_df=pd.DataFrame.from_dict(routes_filtered)
+    max_len=routes_filtered_df["length"].max()
+    min_len=routes_filtered_df["length"].min()
+
+    cmap=mpl.cm.plasma
+    #norm=mpl.colors.Normalize(vmin=min_len,vmax=max_len)
+    norm=mpl.colors.BoundaryNorm(np.linspace(min_len,max_len,10),cmap.N,extend='neither')
+
+    for index,row in routes_filtered_df.iterrows():
+        ax.plot((source_lon,row['dest_lon_m']),(source_lat,row['dest_lat_m']),color=cmap(norm(row['length'])))
+
+    sm=plt.cm.ScalarMappable(cmap=cmap,norm=norm)
+    plt.colorbar(sm,ax=ax,label="Route length (km)")
+
+    #print(routes_filtered_df)
+
+    f=f"results/{source_airport.IATA}_routes.xlsx"
+    if exists(f)==False:
+        routes_filtered_df.to_excel(f)
+    else:
+        print(f"{f} exists.")
 
     return plt
 
@@ -177,11 +210,11 @@ if __name__=="__main__":
 
     continents=["EU"]
     airport_types=['small','medium','large']#["small_airport","medium_airport","large_airport"]
-    runways=1
+    runways=2
 
     airports=Airport_filter(airports_df,runways_df,airport_types=airport_types,runways=runways,continents=continents)
-    with open("airports.pkl",'wb') as f:
-        pickle.dump(airports,f)
+    # with open("airports.pkl",'wb') as f:
+    #     pickle.dump(airports,f)
 
     # with open("airports.pkl",'rb') as f:
     #     airports=pickle.load(f)
@@ -189,7 +222,7 @@ if __name__=="__main__":
     fig,ax=plt.subplots()
     Map_airports(ax,airports,types=airport_types,text=False)
     
-    circle_centre='BRS'
+    circle_centre='GVA'
     dist=1500 # km 
 
     centre_airport=Find_airport(airports,circle_centre)
@@ -198,8 +231,5 @@ if __name__=="__main__":
     Airport_routes(ax,routes_df,airports,centre_airport,dist=dist)
 
     ax.set_aspect('equal')
-    ax.legend()
-
+    ax.legend(loc='upper left')
     plt.show()
-
-    #Routes(airports)
