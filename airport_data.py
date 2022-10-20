@@ -40,12 +40,15 @@ def Airport_filter(airports_df,runways_df,airport_types,runways,continents):
 
     ### airport filtering ###
 
+
+    #airports_df.to_excel('airports.xlsx')
     airports_df=airports_df.loc[
         (airports_df['type'].isin(airport_types))
         & (airports_df['continent'].isin(continents))
         & (airports_df['scheduled_service']=="yes")
-        & (airports_df['iata_code']!=np.NaN)
+        & (airports_df['iata_code']!="")
     ]
+    #airports_df.to_csv("airports.csv")
 
     airports=[]
     for i,r in airports_df.iterrows():
@@ -107,12 +110,6 @@ def Map_airports(ax,airports,types,text=False):
     if text==True:
         for airport in airports:
             ax.text(airport.lon,airport.lat,airport.name)
-
-    ax.set_title(f"European airports - runways > 1800m")
-    ax.set_xlim(-1.4e6,3.7e6)
-    ax.set_ylim(4.1e6,8.6e6)
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
 
     return plt
 
@@ -205,31 +202,35 @@ def Find_airport(airports,IATA):
 
 if __name__=="__main__":
     runways_df=pd.read_csv('data/runways.csv')
-    airports_df=pd.read_csv('data/airports.csv')
+    airports_df=pd.read_csv('data/airports.csv',na_filter=False)
     routes_df=pd.read_csv("data/routes.csv")
 
-    continents=["EU"]
-    airport_types=['small','medium','large']#["small_airport","medium_airport","large_airport"]
+    continents=["NA"]
+    airport_types=['small','medium','large']
     runways=2
 
     airports=Airport_filter(airports_df,runways_df,airport_types=airport_types,runways=runways,continents=continents)
-    # with open("airports.pkl",'wb') as f:
-    #     pickle.dump(airports,f)
-
-    # with open("airports.pkl",'rb') as f:
-    #     airports=pickle.load(f)
 
     fig,ax=plt.subplots()
     Map_airports(ax,airports,types=airport_types,text=False)
     
-    circle_centre='GVA'
+    circle_centre=''
     dist=1500 # km 
 
-    centre_airport=Find_airport(airports,circle_centre)
-    assert centre_airport!=None, f"{circle_centre} not found."
+    if circle_centre!='':
+        centre_airport=Find_airport(airports,circle_centre)
+        assert centre_airport!=None, f"{circle_centre} not found."
 
-    Airport_routes(ax,routes_df,airports,centre_airport,dist=dist)
+        Airport_routes(ax,routes_df,airports,centre_airport,dist=dist)
+    
+    ax.set_title(f"European airports - runways > 1800m")
+
+    ax.set_xlim(-1.4e6,3.7e6)
+    ax.set_ylim(4.1e6,8.6e6)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
 
     ax.set_aspect('equal')
     ax.legend(loc='upper left')
+
     plt.show()
