@@ -222,6 +222,28 @@ def Find_airport(airports,IATA):
     else:
         return x
 
+def plot_routes(source_airport:str,routes_df:pd.DataFrame,airports:list,dist:list):
+    fig,ax=plt.subplots()
+    Map_airports(ax,airports,types=airport_types,text=False)
+
+    if source_airport!='':
+        centre_airport=Find_airport(airports,source_airport)
+        assert centre_airport!=None, f"{source_airport} not found."
+
+        Airport_routes(routes_df,airports,centre_airport,dist=dist,ax=ax)
+
+    ax.set_title(f"European airports - runways > 1800m",fontsize=14)
+
+    ax.set_xlim(-1.4e6,3.7e6)
+    ax.set_ylim(4.1e6,8.6e6)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+    ax.set_aspect('equal')
+    ax.legend(loc='upper left')
+
+    plt.show()
+
 def unique_routes(airports:list,routes_df:pd.DataFrame,dist:list,seats:list):
     # for i,airport in enumerate(tqdm(airports,total=len(airports))):
     #     if i==0:
@@ -344,27 +366,8 @@ if __name__=="__main__":
     airports=Airport_filter(airports_df,runways_df,airport_types=airport_types,runways=runways,continents=continents)
     
     plt.rcParams['font.family']='times new roman'
-    #fig,ax=plt.subplots()
-    #Map_airports(ax,airports,types=airport_types,text=False)
     
     routes_filtered_df,avg_route_len=unique_routes(airports,routes_df,dist,seats)
     route_len_seat_heatmap(routes_filtered_df,avg_route_len)
 
-
-    # if source_airport!='':
-    #     centre_airport=Find_airport(airports,source_airport)
-    #     assert centre_airport!=None, f"{source_airport} not found."
-
-    #     Airport_routes(routes_df,airports,centre_airport,dist=dist,ax=None)
-    
-    # ax.set_title(f"European airports - runways > 1800m",fontsize=14)
-
-    # ax.set_xlim(-1.4e6,3.7e6)
-    # ax.set_ylim(4.1e6,8.6e6)
-    # ax.get_xaxis().set_visible(False)
-    # ax.get_yaxis().set_visible(False)
-
-    # ax.set_aspect('equal')
-    # ax.legend(loc='upper left')
-
-    #plt.show()
+    #plot_routes(source_airport,routes_df,airports,dist)
